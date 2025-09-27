@@ -1,0 +1,22 @@
+# Terminal Process Manager Configuration
+
+# Data directory for storing application data
+data_dir: "~/.tappmanager"
+
+# UI theme (default, dark, light)
+theme: "default"
+
+# Refresh rate for process monitoring in seconds
+refresh_rate: 2
+
+# Enable automatic backups
+auto_backup: true
+
+# Number of backups to keep
+backup_count: 10
+
+# Show system processes by default
+show_system: false
+
+# Enable automatic refresh
+auto_refresh: true
