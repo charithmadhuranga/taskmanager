@@ -75,6 +75,9 @@ func (m ProcessesModel) Update(msg tea.Msg) (ProcessesModel, tea.Cmd) {
 		case "f":
 			cmd = m.showFilterDialog()
 
+		case "ctrl+f":
+			cmd = m.showSearchDialog()
+
 		case "s":
 			m.showSystem = !m.showSystem
 			m.filter.ShowSystem = m.showSystem
@@ -88,7 +91,7 @@ func (m ProcessesModel) Update(msg tea.Msg) (ProcessesModel, tea.Cmd) {
 			m.sortByField("memory")
 			cmd = m.refreshProcesses()
 
-		case "p":
+		case "ctrl+p":
 			m.sortByField("pid")
 			cmd = m.refreshProcesses()
 
@@ -98,6 +101,34 @@ func (m ProcessesModel) Update(msg tea.Msg) (ProcessesModel, tea.Cmd) {
 
 		case "t":
 			m.sortByField("status")
+			cmd = m.refreshProcesses()
+
+		case "u":
+			m.sortByField("user")
+			cmd = m.refreshProcesses()
+
+		case "ctrl+t":
+			m.sortByField("threads")
+			cmd = m.refreshProcesses()
+
+		case "ctrl+n":
+			m.sortByField("nice")
+			cmd = m.refreshProcesses()
+
+		case "ctrl+r":
+			// Reset filters and refresh
+			m.filter = &models.ProcessFilter{}
+			m.sort = &models.ProcessSort{Field: "cpu", Order: "desc"}
+			cmd = m.refreshProcesses()
+
+		case "ctrl+shift+f":
+			// Clear search filter
+			m.filter.SearchTerm = ""
+			cmd = m.refreshProcesses()
+
+		case "ctrl+shift+s":
+			// Reset sort to default
+			m.sort = &models.ProcessSort{Field: "cpu", Order: "desc"}
 			cmd = m.refreshProcesses()
 
 		case "enter":
@@ -158,13 +189,16 @@ func (m ProcessesModel) View() string {
 	colWidths := m.calculateColumnWidths()
 	separator := m.renderSeparator(colWidths)
 	
+	// Create status bar
+	statusBar := m.renderStatusBar()
+	
 	// Create table
 	table := lipgloss.JoinVertical(lipgloss.Left, header, separator, rows)
 	
 	// Ensure table fits in available height and width
 	tableStyle := lipgloss.NewStyle().
-		Height(m.height - 4). // Account for borders and padding
-		MaxHeight(m.height - 4).
+		Height(m.height - 6). // Account for borders, padding, and status bar
+		MaxHeight(m.height - 6).
 		Width(m.width - 4). // Account for borders and padding
 		MaxWidth(m.width - 4)
 
@@ -174,7 +208,8 @@ func (m ProcessesModel) View() string {
 		Padding(0, 1).
 		Render(table)
 
-	return styledTable
+	// Combine table and status bar
+	return lipgloss.JoinVertical(lipgloss.Left, styledTable, statusBar)
 }
 
 // renderTableHeader renders the table header
@@ -196,7 +231,15 @@ func (m ProcessesModel) renderTableHeader() string {
 		headerCells = append(headerCells, cell)
 	}
 
-	return lipgloss.JoinHorizontal(lipgloss.Left, headerCells...)
+	// Add spacing between columns
+	var spacedCells []string
+	for i, cell := range headerCells {
+		if i > 0 {
+			spacedCells = append(spacedCells, "  ") // Add 2 spaces between columns
+		}
+		spacedCells = append(spacedCells, cell)
+	}
+	return lipgloss.JoinHorizontal(lipgloss.Left, spacedCells...)
 }
 
 // renderTableRows renders the table rows
@@ -268,7 +311,15 @@ func (m ProcessesModel) renderTableRows() string {
 			rowStyle.Width(colWidths[7]).Align(lipgloss.Right).Render(niceStr),
 		}
 
-		rows = append(rows, lipgloss.JoinHorizontal(lipgloss.Left, cells...))
+		// Add spacing between columns
+		var spacedCells []string
+		for i, cell := range cells {
+			if i > 0 {
+				spacedCells = append(spacedCells, "  ") // Add 2 spaces between columns
+			}
+			spacedCells = append(spacedCells, cell)
+		}
+		rows = append(rows, lipgloss.JoinHorizontal(lipgloss.Left, spacedCells...))
 	}
 
 	return lipgloss.JoinVertical(lipgloss.Left, rows...)
@@ -314,8 +365,30 @@ func (m ProcessesModel) killProcess(pid int32) tea.Cmd {
 // showFilterDialog shows the filter dialog
 func (m ProcessesModel) showFilterDialog() tea.Cmd {
 	return func() tea.Msg {
-		// For now, just toggle system processes
-		// In a real implementation, this would show a filter dialog
+		// Toggle system processes filter
+		m.filter.ShowSystem = !m.filter.ShowSystem
+		// Also toggle the showSystem field for consistency
+		m.showSystem = m.filter.ShowSystem
+		return filterProcessesMsg{Filter: m.filter}
+	}
+}
+
+// showSearchDialog shows the search dialog
+func (m ProcessesModel) showSearchDialog() tea.Cmd {
+	return func() tea.Msg {
+		// Cycle through different search terms for demonstration
+		switch m.filter.SearchTerm {
+		case "":
+			m.filter.SearchTerm = "system"
+		case "system":
+			m.filter.SearchTerm = "chrome"
+		case "chrome":
+			m.filter.SearchTerm = "python"
+		case "python":
+			m.filter.SearchTerm = ""
+		default:
+			m.filter.SearchTerm = ""
+		}
 		return filterProcessesMsg{Filter: m.filter}
 	}
 }
@@ -340,8 +413,10 @@ func (m ProcessesModel) calculateColumnWidths() []int {
 	// Minimum column widths
 	minWidths := []int{8, 20, 10, 8, 8, 12, 8, 6} // PID, Name, Status, CPU%, Memory%, User, Threads, Nice
 	
-	// Available width (account for borders and padding)
-	availableWidth := m.width - 4 // Account for borders
+	// Available width (account for borders, padding, and spacing between columns)
+	// We have 7 spaces between 8 columns (2 spaces each)
+	spacingWidth := 7 * 2 // 14 spaces total
+	availableWidth := m.width - 4 - spacingWidth // Account for borders and spacing
 	
 	// Calculate total minimum width
 	totalMinWidth := 0
@@ -410,7 +485,42 @@ func (m ProcessesModel) renderSeparator(colWidths []int) string {
 		separatorCells = append(separatorCells, separator)
 	}
 	
-	return lipgloss.JoinHorizontal(lipgloss.Left, separatorCells...)
+	// Add spacing between columns to match header and rows
+	var spacedCells []string
+	for i, cell := range separatorCells {
+		if i > 0 {
+			spacedCells = append(spacedCells, "  ") // Add 2 spaces between columns
+		}
+		spacedCells = append(spacedCells, cell)
+	}
+	return lipgloss.JoinHorizontal(lipgloss.Left, spacedCells...)
+}
+
+// renderStatusBar renders the status bar with sort and filter information
+func (m ProcessesModel) renderStatusBar() string {
+	statusStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("240")).
+		Align(lipgloss.Left)
+
+	// Build status text
+	statusText := fmt.Sprintf("Sort: %s (%s)", m.sort.Field, m.sort.Order)
+	
+	if m.filter.SearchTerm != "" {
+		statusText += fmt.Sprintf(" | Search: %s", m.filter.SearchTerm)
+	}
+	
+	if !m.filter.ShowSystem {
+		statusText += " | System processes hidden"
+	}
+	
+	statusText += fmt.Sprintf(" | Processes: %d", len(m.processes))
+
+	return statusStyle.
+		Width(m.width - 4).
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color("62")).
+		Padding(0, 1).
+		Render(statusText)
 }
 
 // Messages

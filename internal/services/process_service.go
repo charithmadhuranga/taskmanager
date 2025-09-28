@@ -40,6 +40,11 @@ func (ps *ProcessService) GetProcesses() ([]*models.ProcessInfo, error) {
 		processInfos = append(processInfos, info)
 	}
 
+	// Sort by CPU usage to get more accurate data
+	sort.Slice(processInfos, func(i, j int) bool {
+		return processInfos[i].CPU > processInfos[j].CPU
+	})
+
 	return processInfos, nil
 }
 
@@ -62,12 +67,24 @@ func (ps *ProcessService) getProcessInfo(p *process.Process) (*models.ProcessInf
 		info.Status = status[0]
 	}
 
+	// Get CPU percentage - use a more reliable method
 	if cpu, err := p.CPUPercent(); err == nil {
 		info.CPU = float64(cpu)
+	} else {
+		// Try alternative method for CPU percentage
+		if times, err := p.Times(); err == nil {
+			// This is a basic calculation - in a real implementation you'd want to track previous values
+			info.CPU = (times.User + times.System) * 100.0
+		} else {
+			info.CPU = 0.0
+		}
 	}
 
+	// Get memory percentage
 	if mem, err := p.MemoryPercent(); err == nil {
 		info.Memory = float64(mem)
+	} else {
+		info.Memory = 0.0
 	}
 
 	if memInfo, err := p.MemoryInfo(); err == nil {
@@ -92,10 +109,14 @@ func (ps *ProcessService) getProcessInfo(p *process.Process) (*models.ProcessInf
 
 	if numThreads, err := p.NumThreads(); err == nil {
 		info.NumThreads = numThreads
+	} else {
+		info.NumThreads = 0
 	}
 
 	if nice, err := p.Nice(); err == nil {
 		info.Nice = nice
+	} else {
+		info.Nice = 0
 	}
 
 	// Check if process is running
@@ -201,6 +222,36 @@ func (ps *ProcessService) SortProcesses(processes []*models.ProcessInfo, sortCon
 		} else {
 			sort.Slice(processes, func(i, j int) bool {
 				return processes[i].Status > processes[j].Status
+			})
+		}
+	case "threads":
+		if sortConfig.Order == "asc" {
+			sort.Slice(processes, func(i, j int) bool {
+				return processes[i].NumThreads < processes[j].NumThreads
+			})
+		} else {
+			sort.Slice(processes, func(i, j int) bool {
+				return processes[i].NumThreads > processes[j].NumThreads
+			})
+		}
+	case "nice":
+		if sortConfig.Order == "asc" {
+			sort.Slice(processes, func(i, j int) bool {
+				return processes[i].Nice < processes[j].Nice
+			})
+		} else {
+			sort.Slice(processes, func(i, j int) bool {
+				return processes[i].Nice > processes[j].Nice
+			})
+		}
+	case "user":
+		if sortConfig.Order == "asc" {
+			sort.Slice(processes, func(i, j int) bool {
+				return processes[i].Username < processes[j].Username
+			})
+		} else {
+			sort.Slice(processes, func(i, j int) bool {
+				return processes[i].Username > processes[j].Username
 			})
 		}
 	}

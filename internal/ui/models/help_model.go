@@ -1,6 +1,9 @@
 package models
 
 import (
+	"fmt"
+	"runtime"
+
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
@@ -67,27 +70,51 @@ func (m HelpModel) View() string {
 	// Help content
 	content := titleStyle.Render("Terminal Process Manager - Help") + "\n\n"
 	
+	// OS-specific information
+	osName := runtime.GOOS
+	content += sectionStyle.Render(fmt.Sprintf("Running on: %s", osName)) + "\n\n"
+	
 	// Navigation
 	content += sectionStyle.Render("Navigation:") + "\n"
-	content += keyStyle.Render("Ctrl+P") + " - " + descStyle.Render("Switch to Processes view") + "\n"
-	content += keyStyle.Render("Ctrl+D") + " - " + descStyle.Render("Switch to Details view") + "\n"
+	content += keyStyle.Render("P") + " - " + descStyle.Render("Switch to Processes view") + "\n"
+	content += keyStyle.Render("D") + " - " + descStyle.Render("Switch to Details view") + "\n"
 	content += keyStyle.Render("Ctrl+S") + " - " + descStyle.Render("Switch to Statistics view") + "\n"
-	content += keyStyle.Render("Ctrl+H") + " - " + descStyle.Render("Show this help") + "\n"
-	content += keyStyle.Render("Ctrl+,") + " - " + descStyle.Render("Switch to Settings view") + "\n"
-	content += keyStyle.Render("Ctrl+Q") + " - " + descStyle.Render("Quit application") + "\n\n"
+	content += keyStyle.Render("H") + " - " + descStyle.Render("Show this help") + "\n"
+	content += keyStyle.Render("E") + " - " + descStyle.Render("Switch to Settings view") + "\n"
+	
+	// OS-specific quit shortcuts
+	switch osName {
+	case "windows":
+		content += keyStyle.Render("Ctrl+Q") + " - " + descStyle.Render("Quit application") + "\n"
+		content += keyStyle.Render("Alt+F4") + " - " + descStyle.Render("Quit application") + "\n"
+	case "darwin":
+		content += keyStyle.Render("Cmd+Q") + " - " + descStyle.Render("Quit application") + "\n"
+		content += keyStyle.Render("Cmd+W") + " - " + descStyle.Render("Close current view") + "\n"
+	case "linux":
+		content += keyStyle.Render("Ctrl+D") + " - " + descStyle.Render("Quit application") + "\n"
+	}
+	content += keyStyle.Render("Q") + " - " + descStyle.Render("Quit application") + "\n"
+	content += keyStyle.Render("Esc") + " - " + descStyle.Render("Return to processes view") + "\n\n"
 
 	// Processes View
 	content += sectionStyle.Render("Processes View:") + "\n"
-	content += keyStyle.Render("↑/↓") + " - " + descStyle.Render("Navigate up/down") + "\n"
-	content += keyStyle.Render("Ctrl+R") + " - " + descStyle.Render("Refresh process list") + "\n"
+	content += keyStyle.Render("↑/↓ or J/K") + " - " + descStyle.Render("Navigate up/down") + "\n"
+	content += keyStyle.Render("R") + " - " + descStyle.Render("Refresh process list") + "\n"
 	content += keyStyle.Render("Ctrl+K") + " - " + descStyle.Render("Kill selected process") + "\n"
-	content += keyStyle.Render("Ctrl+F") + " - " + descStyle.Render("Filter processes") + "\n"
-	content += keyStyle.Render("Ctrl+S") + " - " + descStyle.Render("Toggle system processes") + "\n"
-	content += keyStyle.Render("Ctrl+O") + " - " + descStyle.Render("Sort by CPU usage") + "\n"
-	content += keyStyle.Render("Ctrl+M") + " - " + descStyle.Render("Sort by memory usage") + "\n"
+	content += keyStyle.Render("F") + " - " + descStyle.Render("Toggle system processes filter") + "\n"
+	content += keyStyle.Render("Ctrl+F") + " - " + descStyle.Render("Search processes (cycle through terms)") + "\n"
+	content += keyStyle.Render("Ctrl+Shift+F") + " - " + descStyle.Render("Clear search filter") + "\n"
+	content += keyStyle.Render("S") + " - " + descStyle.Render("Toggle system processes display") + "\n"
+	content += keyStyle.Render("Ctrl+R") + " - " + descStyle.Render("Reset all filters and refresh") + "\n"
+	content += keyStyle.Render("Ctrl+Shift+S") + " - " + descStyle.Render("Reset sort to default (CPU desc)") + "\n"
+	content += keyStyle.Render("O") + " - " + descStyle.Render("Sort by CPU usage") + "\n"
+	content += keyStyle.Render("M") + " - " + descStyle.Render("Sort by memory usage") + "\n"
 	content += keyStyle.Render("Ctrl+P") + " - " + descStyle.Render("Sort by PID") + "\n"
-	content += keyStyle.Render("Ctrl+N") + " - " + descStyle.Render("Sort by name") + "\n"
-	content += keyStyle.Render("Ctrl+T") + " - " + descStyle.Render("Sort by status") + "\n"
+	content += keyStyle.Render("N") + " - " + descStyle.Render("Sort by name") + "\n"
+	content += keyStyle.Render("T") + " - " + descStyle.Render("Sort by status") + "\n"
+	content += keyStyle.Render("U") + " - " + descStyle.Render("Sort by user") + "\n"
+	content += keyStyle.Render("Ctrl+T") + " - " + descStyle.Render("Sort by threads") + "\n"
+	content += keyStyle.Render("Ctrl+N") + " - " + descStyle.Render("Sort by nice value") + "\n"
 	content += keyStyle.Render("Enter") + " - " + descStyle.Render("View process details") + "\n\n"
 
 	// Details View

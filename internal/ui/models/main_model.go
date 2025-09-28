@@ -80,16 +80,24 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyMsg:
 		switch msg.String() {
-		case "ctrl+c", "q":
+		case "ctrl+c", "q", "Q", "ctrl+q", "alt+f4", "cmd+q", "ctrl+d":
 			m.quitting = true
 			return m, tea.Quit
 
-		case "ctrl+p":
+		case "esc":
+			// ESC key - return to processes view from any other view
+			if m.currentView != ViewProcesses {
+				m.currentView = ViewProcesses
+				cmd = m.processes.Init()
+				cmds = append(cmds, cmd)
+			}
+
+		case "p", "P":
 			m.currentView = ViewProcesses
 			cmd = m.processes.Init()
 			cmds = append(cmds, cmd)
 
-		case "ctrl+d":
+		case "d", "D":
 			m.currentView = ViewDetails
 			cmd = m.details.Init()
 			cmds = append(cmds, cmd)
@@ -99,16 +107,41 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmd = m.stats.Init()
 			cmds = append(cmds, cmd)
 
-		case "ctrl+h":
+		case "h", "H":
 			m.currentView = ViewHelp
 			cmd = m.help.Init()
 			cmds = append(cmds, cmd)
 
-		case "ctrl+,":
+		case "e", "E":
 			m.currentView = ViewSettings
 			cmd = m.settings.Init()
 			cmds = append(cmds, cmd)
+
+		case "cmd+w":
+			// macOS specific - close current view (go back to processes)
+			if m.currentView != ViewProcesses {
+				m.currentView = ViewProcesses
+				cmd = m.processes.Init()
+				cmds = append(cmds, cmd)
+			}
 		}
+
+	case SwitchViewMsg:
+		// Handle view switching from sub-models
+		m.currentView = msg.View
+		switch msg.View {
+		case ViewProcesses:
+			cmd = m.processes.Init()
+		case ViewDetails:
+			cmd = m.details.Init()
+		case ViewStats:
+			cmd = m.stats.Init()
+		case ViewSettings:
+			cmd = m.settings.Init()
+		case ViewHelp:
+			cmd = m.help.Init()
+		}
+		cmds = append(cmds, cmd)
 	}
 
 	// Update the current view
@@ -194,7 +227,7 @@ func (m MainModel) renderHeader() string {
 
 	nav := lipgloss.NewStyle().
 		Foreground(lipgloss.Color("240")).
-		Render("[P]rocesses [D]etails [S]tats [S]ettings [H]elp [Q]uit")
+		Render("[P]rocesses [D]etails [S]tats [E]ettings [H]elp [Q]uit")
 
 	header := lipgloss.JoinHorizontal(lipgloss.Center, title, "  ", nav)
 	
